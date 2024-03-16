@@ -1,4 +1,6 @@
 import numpy as np
+import scipy.stats as sts
+import matplotlib.pyplot as plt
 
 class HomogeneousPoissonProcess:
     def __init__(self, rate):
@@ -40,6 +42,14 @@ class HawkesProcess:
 
     def get_rate(self, events, t):
         return self.mu + self.alpha * (np.exp(-self.beta*(t-events))*(t>events)).sum()
+    
+    def get_compensator(self, events, t):
+        # return self.mu * t + (self.alpha / self.beta) * ((1-np.exp(-self.beta*(t-events))*(t>events))).sum()
+        total = self.mu * t
+        for t_i in events:
+            if t_i<t:
+                total += (self.alpha/self.beta) * (1 - np.exp(-self.beta*(t-t_i)))
+        return total
 
     def simulate(self, T):
         t = 0
@@ -53,3 +63,13 @@ class HawkesProcess:
             if u < ratio and t < T:
                 events = np.append(events, t)
         return events
+    
+    def plot_QQ(self, events):
+        # cf. https://stats.stackexchange.com/questions/492978/ks-test-for-hawkes-process
+        compensator_func = lambda t: self.get_compensator(events, t)
+        s = np.array([compensator_func(t_i) for t_i in events])
+        exp = s[1:] - s[:-1]
+
+        sts.probplot(exp, dist="expon", plot=plt)
+        plt.show()
+
