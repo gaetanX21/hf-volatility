@@ -165,7 +165,8 @@ class PriceProcess:
         events = hawkes.simulate(T)
         pos_events, neg_events = events
         # create time series with index = time and value = price
-        time_series = pd.Series(index=np.concatenate(pos_events, neg_events))
+        all_events = np.concatenate([pos_events, neg_events])
+        time_series = pd.Series(index=all_events)
         time_series.loc[pos_events] = 1
         time_series.loc[neg_events] = -1
         time_series = time_series.sort_index()
