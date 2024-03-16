@@ -158,6 +158,19 @@ class PriceProcess:
         time_series = time_series.sort_index()
         time_series = time_series.cumsum()
         return time_series
+    
+    def simulate(self, T):
+        """This time we use coupled Hawkes processes."""
+        hawkes = MultiHawkesProcess([self.mu, self.mu], [[0, self.alpha], [self.alpha, 0]], [[0, self.beta], [self.beta, 0]])
+        events = hawkes.simulate(T)
+        pos_events, neg_events = events
+        # create time series with index = time and value = price
+        time_series = pd.Series(index=np.concatenate(pos_events, neg_events))
+        time_series.loc[pos_events] = 1
+        time_series.loc[neg_events] = -1
+        time_series = time_series.sort_index()
+        time_series = time_series.cumsum()
+        return time_series
 
 
 
