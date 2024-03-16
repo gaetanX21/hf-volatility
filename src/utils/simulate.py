@@ -76,7 +76,10 @@ class HawkesProcess:
 
 
 class MultiHawkesProcess:
+
     # Implements Algo 1 from https://www.math.fsu.edu/~ychen/research/multiHawkes.pdf
+    # possible improvement: numpy arrays instead of lists
+
     def __init__(self, mus, alphas, betas) -> None:
         self.M = len(mus) # number of dimensions
         self.mus = mus
@@ -86,7 +89,9 @@ class MultiHawkesProcess:
     def get_rate(self, m, events, t):
         res = self.mus[m]
         for n in range(self.M):
-            res += self.alphas[m][n] * (np.exp(-self.betas[m][n]*(t-events[n]))*(t>events[n])).sum()
+            for t_i in events[n]:
+                if t_i < t:
+                    res += self.alphas[m][n] * np.exp(-self.betas[m][n] * (t - t_i))
         return res
     
     def get_rate_sum(self, events, t):
@@ -94,8 +99,7 @@ class MultiHawkesProcess:
 
     def simulate(self, T):
         s = 0
-        # events = [[] for i in range(self.M)]
-        events = np.empty((self.M, 0))
+        events = [[] for i in range(self.M)]
         while s < T:
             lambda_bar = self.get_rate_sum(events, s)
             e = np.random.exponential(1/lambda_bar)
@@ -108,10 +112,27 @@ class MultiHawkesProcess:
                 while D*lambda_bar > new_sum:
                     k += 1
                     new_sum += self.get_rate(k, events, s)
-                # events[k].append(s)
-                events[k] = np.append(events[k], s)
+                if s < T:
+                    events[k].append(s)
 
         return events
+    
+    def plot(self, events, T, n_points=1000):
+        T_range = np.linspace(0, T, n_points)
+        rates = [[self.get_rate(m, events, t) for t in T_range] for m in range(self.M)]
+        fig, axs = plt.subplots(self.M, 1, figsize=(10, 6))
+        max_rate = max([max(r) for r in rates])
+
+        for i in range(self.M):
+            ax = axs[i]
+            ax.plot(T_range, rates[i], label=f'$\\lambda_{i}(t)$', c='blue')
+            ax.plot(events[i], [0]*len(events[i]), marker=2, ls='', label=f'events {i}', c='red')
+            ax.legend()
+            ax.set_ylim(0, max_rate)
+
+        plt.tight_layout()
+        plt.show()
+
 
 
 class PriceProcess:
