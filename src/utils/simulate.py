@@ -89,9 +89,12 @@ class MultiHawkesProcess:
     def get_rate(self, m, events, t):
         res = self.mus[m]
         for n in range(self.M):
-            for t_i in events[n]:
-                if t_i < t:
-                    res += self.alphas[m][n] * np.exp(-self.betas[m][n] * (t - t_i))
+            # for t_i in events[n]:
+            #     if t_i < t:
+            #         res += self.alphas[m][n] * np.exp(-self.betas[m][n] * (t - t_i))
+
+            # numpy is faster
+            res += self.alphas[m][n] * (np.exp(-self.betas[m][n] * (t - events[n])) * (t > events[n])).sum()
         return res
     
     def get_rate_sum(self, events, t):
@@ -99,7 +102,7 @@ class MultiHawkesProcess:
 
     def simulate(self, T):
         s = 0
-        events = [[] for i in range(self.M)]
+        events = [np.array([]) for _ in range(self.M)]
         while s < T:
             lambda_bar = self.get_rate_sum(events, s)
             e = np.random.exponential(1/lambda_bar)
@@ -113,7 +116,8 @@ class MultiHawkesProcess:
                     k += 1
                     new_sum += self.get_rate(k, events, s)
                 if s < T:
-                    events[k].append(s)
+                    # events[k].append(s) # numpy is faster
+                    events[k] = np.append(events[k], s)
         return events
     
     def plot(self, events, T, n_points=1000):
