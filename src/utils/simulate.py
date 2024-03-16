@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.stats as sts
 import matplotlib.pyplot as plt
+import pandas as pd
 
 class HomogeneousPoissonProcess:
     def __init__(self, rate):
@@ -73,3 +74,70 @@ class HawkesProcess:
         sts.probplot(exp, dist="expon", plot=plt)
         plt.show()
 
+
+class MultiHawkesProcess:
+    # Implements Algo 1 from https://www.math.fsu.edu/~ychen/research/multiHawkes.pdf
+    def __init__(self, mus, alphas, betas) -> None:
+        self.M = len(mus) # number of dimensions
+        self.mus = mus
+        self.alphas = alphas
+        self.betas = betas
+
+    def get_rate(self, m, events, t):
+        res = self.mus[m]
+        for n in range(self.M):
+            res += self.alphas[m][n] * (np.exp(-self.betas[m][n]*(t-events[n]))*(t>events[n])).sum()
+        return res
+    
+    def get_rate_sum(self, events, t):
+        return sum([self.get_rate(m, events, t) for m in range(self.M)])
+
+    def simulate(self, T):
+        s = 0
+        # events = [[] for i in range(self.M)]
+        events = np.empty((self.M, 0))
+        while s < T:
+            lambda_bar = self.get_rate_sum(events, s)
+            e = np.random.exponential(1/lambda_bar)
+            s += e
+            D = np.random.rand()
+            ratio = self.get_rate_sum(events, s) / lambda_bar
+            if D < ratio:
+                k = 0
+                new_sum = self.get_rate(k, events, s)
+                while D*lambda_bar > new_sum:
+                    k += 1
+                    new_sum += self.get_rate(k, events, s)
+                # events[k].append(s)
+                events[k] = np.append(events[k], s)
+
+        return events
+
+
+class PriceProcess:
+
+    """We simulate the price as X(t)=N_+(t)-N_-(t) where N_+ (resp. N_-) is a Hawkes process with parameters (mu, alpha, beta)
+    representing positive (resp. negative) price jumps."""
+
+    def __init__(self, mu, alpha, beta):
+        self.mu = mu
+        self.alpha = alpha
+        self.beta = beta
+
+    def simulate_wrong(self, T):
+        """Here we simulate the price process by simulating two Hawkes processes and then taking the difference.
+        This doesn't work because in practice N_+ excites N_- and vice versa., so they're not self-exciting but they excite each other."""
+        hawkes = HawkesProcess(self.mu, self.alpha, self.beta)
+        pos_events = hawkes.simulate(T)
+        neg_events = hawkes.simulate(T)
+        # create time series with index = time and value = price
+        time_series = pd.Series(index=np.concatenate(pos_events, neg_events), data=0)
+        time_series.loc[pos_events] = 1
+        time_series.loc[neg_events] = -1
+        time_series = time_series.sort_index()
+        time_series = time_series.cumsum()
+        return time_series
+
+
+
+    
