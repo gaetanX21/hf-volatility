@@ -105,11 +105,11 @@ class MultiHawkesProcess:
         events = [np.array([]) for _ in range(self.M)]
         while s < T:
             lambda_bar = self.get_rate_sum(events, s)
-            e = np.random.exponential(1/lambda_bar)
-            s += e
+            w = np.random.exponential(1/lambda_bar)
+            s += w
             D = np.random.rand()
-            ratio = self.get_rate_sum(events, s) / lambda_bar
-            if D < ratio:
+            new_lambda_bar = self.get_rate_sum(events, s)
+            if D*lambda_bar <= new_lambda_bar:
                 k = 0
                 new_sum = self.get_rate(k, events, s)
                 while D*lambda_bar > new_sum:
@@ -118,6 +118,7 @@ class MultiHawkesProcess:
                 if s < T:
                     # events[k].append(s) # numpy is faster
                     events[k] = np.append(events[k], s)
+
         return events
     
     def plot(self, events, T, n_points=1000):
@@ -135,8 +136,6 @@ class MultiHawkesProcess:
 
         plt.tight_layout()
         plt.show()
-
-
 
 class PriceProcess:
 
