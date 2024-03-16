@@ -16,11 +16,11 @@ class HawkesProcessCalibrator:
             for i in range(n):
                 ll += alpha/beta * (np.exp(-beta*(t_n - self.events[i])) - 1)
             for i in range(n):
-                A_i = sum(np.exp(-beta*(self.events[j] - self.events[i])) for j in range(i+1,n))
+                A_i = sum(np.exp(-beta*(self.events[i] - self.events[j])) for j in range(i))
                 ll += np.log(mu + alpha*A_i)
             return -ll
         
-        res = minimize(nll, [1,1,1], bounds=[(0, None), (0, None), (0, None)])
+        res = minimize(fun=nll, x0=[1,1,2], bounds=[(1e-6, None), (1e-6, None), (1e-6, None)], method='L-BFGS-B')
         return res.x
         
 
