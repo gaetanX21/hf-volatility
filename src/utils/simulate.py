@@ -114,7 +114,6 @@ class MultiHawkesProcess:
                     new_sum += self.get_rate(k, events, s)
                 if s < T:
                     events[k].append(s)
-
         return events
     
     def plot(self, events, T, n_points=1000):
