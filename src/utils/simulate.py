@@ -54,8 +54,9 @@ class HawkesProcess:
         self.beta = beta
 
     def get_rate(self, events, t):
-        return self.mu + self.alpha * (np.exp(-self.beta*(t-events))*(t>=events)).sum() # for the same reason as multihawkes, here it's >= and not >
-    
+        return self.mu + self.alpha * (np.exp(-self.beta*(np.maximum(t-events,0)))*(t>=events)).sum() # for the same reason as multihawkes, here it's >= and not >
+        # we add the max(t-events,0) to avoid overflow in the exp...
+
     def get_compensator(self, events, t):
         total = self.mu * t
         # for t_i in events:
@@ -79,6 +80,19 @@ class HawkesProcess:
             if u < ratio and t < T:
                 events = np.append(events, t)
         return events
+    
+    def plot(self, events, T, n_points=1000):
+        T_range = np.linspace(0, T, n_points)
+        rates = [self.get_rate(events, t) for t in T_range]
+        fig, ax = plt.subplots(figsize=(10, 6))
+        max_rate = max(rates)
+        ax.plot(T_range, rates, label='$\\lambda(t)$', c='blue')
+        ax.plot(events, [0]*len(events), marker=2, ls='', label=f'events', c='red')
+        ax.legend()
+        ax.set_ylim(0, max_rate)
+
+        plt.tight_layout()
+        plt.show()
     
     def plot_QQ(self, events):
         # cf. https://stats.stackexchange.com/questions/492978/ks-test-for-hawkes-process
@@ -106,7 +120,8 @@ class MultiHawkesProcess:
         for n in range(self.M):
             # /!\ HERE WE NEED TO USE >= INSTEAD OF >, OTHERWISE WE UNDERESTIMATE THE RATE, WHICH CREATES PROBLEMS
             # (the last dimension of events will be underserved)
-            res += self.alphas[m][n] * (np.exp(-self.betas[m][n] * (t - events[n])) * (t >= events[n])).sum() # again, it's >= and not >
+            res += self.alphas[m][n] * (np.exp(-self.betas[m][n] * (np.maximum(t - events[n],0))) * (t >= events[n])).sum() # again, it's >= and not >
+            # we add the max(t-events,0) to avoid overflow in the exp...
         return res
     
     def get_rate_sum(self, events, t):
@@ -210,7 +225,3 @@ class PriceProcess:
         time_series = time_series.sort_index()
         time_series = time_series.cumsum()
         return time_series
-
-
-
-    

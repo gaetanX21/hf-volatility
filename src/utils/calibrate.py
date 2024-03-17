@@ -1,27 +1,45 @@
-# whoever you are add comments please
 import numpy as np
 from scipy.optimize import minimize
+from time import time
 
-class HawkesProcessCalibrator:
+
+class HawkesCalibrator:
+
+    """Calibrates the parameters theta=(mu,alpha,beta) given event realisations of a univariate Hawkes process."""
+
     def __init__(self, events):
         self.events = events
+    
+    def nll(self, theta):
+        # LL formula in red box page 32 at http://lamp.ecp.fr/MAS/fiQuant/ioane_files/HawkesCourseSlides.pdf (P=1 in our case)
+        mu, alpha, beta = theta
+        kappa = alpha/beta
+        t_n = self.events[-1]
+        n = len(self.events)
+        ll = t_n - mu * t_n
 
-    def calibrate(self):
-        # source: https://www.ism.ac.jp/editsec/aism/pdf/031_1_0145.pdf
-        def nll(theta):
-            mu, alpha, beta = theta
-            t_n = self.events[-1]
-            n = len(self.events)
-            ll = - mu * t_n
-            for i in range(n):
-                ll += alpha/beta * (np.exp(-beta*(t_n - self.events[i])) - 1)
-            for i in range(n):
-                A_i = sum(np.exp(-beta*(self.events[i] - self.events[j])) for j in range(i))
-                ll += np.log(mu + alpha*A_i)
-            return -ll
+        # NUMPYIFY
+        # for i in range(n):
+        #     ll = ll - kappa * (1 - np.exp(-beta*(t_n - self.events[i])))
+        ll -= kappa * (1 - np.exp(-beta*(t_n - self.events))).sum()
+
+        # recursion here so we can numpyify the loop
+        r_array = np.zeros(n)
+        for i in range(1, n):
+            r_array[i] = np.exp(-beta * (self.events[i] - self.events[i - 1])) * (1 + r_array[i - 1])
+
+        # NUMPYIFY
+        # for i in range(n):
+        #     ll += np.log(mu + alpha*r_array[i])
+        ll += np.log(mu + alpha*r_array).sum()
         
-        res = minimize(fun=nll, x0=[1,1,2], bounds=[(1e-6, None), (1e-6, None), (1e-6, None)], method='L-BFGS-B')
+        return -ll
+    
+    def MLE(self, timeit=True, x0=[1,1,1], method='L-BFGS-B'):
+        # TODO: find better x0 (e.g. using the method of moments)
+        start = time()
+        res = minimize(fun=self.nll, x0=x0, bounds=[(1e-3, None), (1e-3, None), (1e-3, None)], method=method)
+        end = time()
+        if timeit:
+            print("\033[92mCalibration time: ", end - start, "s\033[0m")
         return res.x
-        
-
-
