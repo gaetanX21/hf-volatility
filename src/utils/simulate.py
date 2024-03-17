@@ -3,7 +3,11 @@ import scipy.stats as sts
 import matplotlib.pyplot as plt
 import pandas as pd
 
+
 class HomogeneousPoissonProcess:
+
+    """Simulate a homogeneous Poisson process with rate `rate`."""
+
     def __init__(self, rate):
         self.rate = rate
 
@@ -18,6 +22,10 @@ class HomogeneousPoissonProcess:
 
  
 class InhomogeneousPoissonProcess:
+    
+    """Simulate an inhomogeneous Poisson process with rate function `rate_function` and majorant `rate_majorant`
+    using Lewis and Shedler's algorithm. (https://doi.org/10.1002/nav.3800260304)"""
+
     def __init__(self, rate_function, rate_majorant):
         self.rate_function = rate_function
         self.rate_majorant = rate_majorant
@@ -36,6 +44,10 @@ class InhomogeneousPoissonProcess:
     
 
 class HawkesProcess:
+
+    """Simulates a univariate Hawkes Process with baseline intensity mu and exponential kernel with magnitude
+    alpha and decay time beta."""
+
     def __init__(self, mu, alpha, beta):
         self.mu = mu
         self.alpha = alpha
@@ -46,9 +58,13 @@ class HawkesProcess:
     
     def get_compensator(self, events, t):
         total = self.mu * t
-        for t_i in events:
-            if t_i<t:
-                total += (self.alpha/self.beta) * (1 - np.exp(-self.beta*(t-t_i)))
+        # for t_i in events:
+        #     if t_i<t:
+        #         total += (self.alpha/self.beta) * (1 - np.exp(-self.beta*(t-t_i)))
+
+        # numpy is faster
+        total += (self.alpha/self.beta) * ((1 - np.exp(-self.beta*(np.maximum(t-events,0))))*(t>events)).sum() # note that here using >= or > doesn't make any difference, and it's smarter to use > since using >= amounts to adding a 0 to the sum
+        # we add the max(t-events,0) to avoid overflow in the exp...
         return total
 
     def simulate(self, T):
@@ -76,7 +92,8 @@ class HawkesProcess:
 
 class MultiHawkesProcess:
 
-    # Implements Algo 1 from https://www.math.fsu.edu/~ychen/research/multiHawkes.pdf
+    """Simulates a multivariate Hawkes Process with baseline intensities mu, matrix of magnitudes alpha and matrix of decay times beta.
+    The algorithm used is Algorithm 1 from https://www.math.fsu.edu/~ychen/research/multiHawkes.pdf"""
 
     def __init__(self, mus, alphas, betas) -> None:
         self.M = len(mus) # number of dimensions
@@ -98,9 +115,12 @@ class MultiHawkesProcess:
     def get_compensator(self, m, events, t):
         total = self.mus[m] * t
         for n in range(self.M):
-            for t_i in events[n]:
-                if t_i < t:
-                    total += (self.alphas[m][n] / self.betas[m][n]) * (1 - np.exp(-self.betas[m][n] * (t - t_i)))
+            # for t_i in events[n]:
+            #     if t_i < t:
+            #         total += (self.alphas[m][n] / self.betas[m][n]) * (1 - np.exp(-self.betas[m][n] * (t - t_i)))
+            # numpy is faster
+            total += (self.alphas[m][n] / self.betas[m][n]) * ((1 - np.exp(-self.betas[m][n] * np.maximum(t - events[n],0)))*(t>events[n])).sum() # note that here using >= or > doesn't make any difference, and it's smarter to use > since using >= amounts to adding a 0 to the sum
+            # we add the max(t-events,0) to avoid overflow in the exp...
         return total
 
     def simulate(self, T):
@@ -152,10 +172,11 @@ class MultiHawkesProcess:
             sts.probplot(exp[m], dist="expon", plot=plt)
             plt.show()
 
+
 class PriceProcess:
 
-    """We simulate the price as X(t)=N_+(t)-N_-(t) where N_+ (resp. N_-) is a Hawkes process with parameters (mu, alpha, beta)
-    representing positive (resp. negative) price jumps."""
+    """Simulates price as X(t) = N_+(t) - N_-(t) where (N_+, N-) is a bivariate Hawkes process in which N_+ excites N-
+    and conversely N- excites N+, though the two processes do not excite themselves."""
 
     def __init__(self, mu, alpha, beta):
         self.mu = mu
