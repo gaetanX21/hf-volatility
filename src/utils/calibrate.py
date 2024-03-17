@@ -43,7 +43,7 @@ class HawkesCalibrator:
         end = time()
         if timeit:
             print("\033[92mCalibration time: ", end - start, "s\033[0m")
-        return res.x
+        return tuple(res.x)
     
 
     def M_estimation(self):
