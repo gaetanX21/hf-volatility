@@ -212,7 +212,7 @@ class PriceProcess:
         time_series = time_series.cumsum()
         return time_series
     
-    def simulate(self, T):
+    def simulate(self, T, datetime_index=True):
         """This time we use coupled Hawkes processes."""
         hawkes = MultiHawkesProcess([self.mu, self.mu], [[0, self.alpha], [self.alpha, 0]], [[0, self.beta], [self.beta, 0]])
         events = hawkes.simulate(T)
@@ -224,4 +224,13 @@ class PriceProcess:
         time_series.loc[neg_events] = -1
         time_series = time_series.sort_index()
         time_series = time_series.cumsum()
+        if datetime_index:
+            time_series.index = pd.to_datetime(time_series.index, unit='s')
         return time_series
+    
+    def plot(self, time_series):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(time_series.index, time_series.values)
+        ax.set_title('Price process')
+        plt.tight_layout()
+        plt.show()
