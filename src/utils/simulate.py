@@ -42,10 +42,9 @@ class HawkesProcess:
         self.beta = beta
 
     def get_rate(self, events, t):
-        return self.mu + self.alpha * (np.exp(-self.beta*(t-events))*(t>events)).sum()
+        return self.mu + self.alpha * (np.exp(-self.beta*(t-events))*(t>=events)).sum() # for the same reason as multihawkes, here it's >= and not >
     
     def get_compensator(self, events, t):
-        # return self.mu * t + (self.alpha / self.beta) * ((1-np.exp(-self.beta*(t-events))*(t>events))).sum()
         total = self.mu * t
         for t_i in events:
             if t_i<t:
@@ -78,7 +77,6 @@ class HawkesProcess:
 class MultiHawkesProcess:
 
     # Implements Algo 1 from https://www.math.fsu.edu/~ychen/research/multiHawkes.pdf
-    # possible improvement: numpy arrays instead of lists
 
     def __init__(self, mus, alphas, betas) -> None:
         self.M = len(mus) # number of dimensions
@@ -89,16 +87,21 @@ class MultiHawkesProcess:
     def get_rate(self, m, events, t):
         res = self.mus[m]
         for n in range(self.M):
-            # for t_i in events[n]:
-            #     if t_i < t:
-            #         res += self.alphas[m][n] * np.exp(-self.betas[m][n] * (t - t_i))
-
-            # numpy is faster
-            res += self.alphas[m][n] * (np.exp(-self.betas[m][n] * (t - events[n])) * (t > events[n])).sum()
+            # /!\ HERE WE NEED TO USE >= INSTEAD OF >, OTHERWISE WE UNDERESTIMATE THE RATE, WHICH CREATES PROBLEMS
+            # (the last dimension of events will be underserved)
+            res += self.alphas[m][n] * (np.exp(-self.betas[m][n] * (t - events[n])) * (t >= events[n])).sum() # again, it's >= and not >
         return res
     
     def get_rate_sum(self, events, t):
         return sum([self.get_rate(m, events, t) for m in range(self.M)])
+    
+    def get_compensator(self, m, events, t):
+        total = self.mus[m] * t
+        for n in range(self.M):
+            for t_i in events[n]:
+                if t_i < t:
+                    total += (self.alphas[m][n] / self.betas[m][n]) * (1 - np.exp(-self.betas[m][n] * (t - t_i)))
+        return total
 
     def simulate(self, T):
         s = 0
@@ -127,6 +130,8 @@ class MultiHawkesProcess:
         fig, axs = plt.subplots(self.M, 1, figsize=(10, 6))
         max_rate = max([max(r) for r in rates])
 
+        if self.M == 1:
+            axs = [axs] # simple hack to deal with the case where M=1
         for i in range(self.M):
             ax = axs[i]
             ax.plot(T_range, rates[i], label=f'$\\lambda_{i}(t)$', c='blue')
@@ -136,6 +141,16 @@ class MultiHawkesProcess:
 
         plt.tight_layout()
         plt.show()
+
+    def plot_QQ(self, events):
+        # cf. http://lamp.ecp.fr/MAS/fiQuant/ioane_files/HawkesCourseSlides.pdf page 51
+        compensator_funcs = [lambda t: self.get_compensator(m, events, t) for m in range(self.M)]
+        s = [np.array([compensator_funcs[m](t_i) for t_i in events[m]]) for m in range(self.M)]
+        exp = [s[m][1:] - s[m][:-1] for m in range(self.M)]
+
+        for m in range(self.M):
+            sts.probplot(exp[m], dist="expon", plot=plt)
+            plt.show()
 
 class PriceProcess:
 
