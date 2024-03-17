@@ -49,3 +49,64 @@ class HawkesCalibrator:
     def M_estimation(self):
         # TODO: implement M-estimation (ie. method of moments)
         pass
+
+
+
+class MultiHawkesCalibrator:
+    def __init__(self, events, d):
+        self.events = events
+        self.d = d
+
+    def calibrate(self, initial_guess_flat, T):
+        bounds = [(1e-10, None)] * self.d + [(1e-10, None)] * self.d**2 + [(1e-10, None)] * self.d**2
+        res = minimize(fun=self.nll_d, args=(T, ), x0=initial_guess_flat, bounds=bounds, method='L-BFGS-B')
+        return res.x
+    
+    def nll_2d(self, theta, T):
+        mus = theta[:self.d]
+        alphas = theta[self.d:self.d + self.d**2].reshape((self.d, self.d))
+        betas = theta[self.d + self.d**2:].reshape((self.d, self.d))
+        ll_1 = (1 - mus[0]) * T
+        ll_2 = (1 - mus[1]) * T
+        for k in range(len(self.events[0])):
+            ll_1 = ll_1 - alphas[0, 0] / betas[0, 0] * (1 - np.exp(-betas[0, 0]*(T - self.events[0][k])))
+
+    def nll_d(self, theta, T):
+        # source: https://www.ism.ac.jp/editsec/aism/pdf/031_1_0145.pdf
+        mus = theta[:self.d]
+        alphas = theta[self.d:self.d + self.d**2].reshape((self.d, self.d))
+        betas = theta[self.d + self.d**2:].reshape((self.d, self.d))
+        n = np.max([len(self.events[i]) for i in range(self.d)])
+        ll = np.zeros(self.d)
+        for i in range(self.d):
+            ll[i] = T - mus[i] * T
+            for j in range(self.d):
+                for k in range(len(self.events[i])):
+                    ll[i] = ll[i] - alphas[i, j] / betas[i, j] * (1 - np.exp(-betas[i, j]*(T - self.events[i][k])))
+        
+        r_array = np.zeros((self.d, self.d, n))
+        for i in range(self.d):
+            for j in range(self.d):
+                for k in range(1, len(self.events[i])):
+                    if i==j:
+                        r_array[i, j, k] = np.exp(-betas[i, j] * (self.events[i][k] - self.events[i][k - 1])) * (1 + r_array[i, j, k - 1])
+                    else:
+                        sum = 0
+                        l = 0
+                        while l < len(self.events[j]) and self.events[j][l] >= self.events[i][k - 1] and self.events[j][l] < self.events[i][k]:
+                            sum += np.exp(-betas[i, j] * (self.events[i][k] - self.events[j][l]))
+                            l += 1
+                        r_array[i, j, k] = np.exp(-betas[i, j] * (self.events[i][k] - self.events[i][k - 1])) * (1 + r_array[i, j, k - 1]) + sum
+
+        for i in range(self.d):
+            for j in range(self.d):
+                for k in range(len(self.events[i])):
+                    ll[i] += np.log(mus[i] + alphas[i, j]*r_array[i, j, k])  
+                    # r_ijk = 0
+                    # l = 0
+                    # while l < len(events[j]) and events[j][l] < events[i][k]:
+                    #     r_ijk += np.exp(-betas[i, j] * (events[i][k] - events[j][l]))
+                    #     l += 1
+                    # ll[i] = ll[i] + np.log(mus[i] + alphas[i, j]*r_ijk) 
+
+        return -np.sum(ll)

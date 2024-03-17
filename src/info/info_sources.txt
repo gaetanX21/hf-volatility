@@ -1,1 +1,3 @@
 http://lamp.ecp.fr/MAS/fiQuant/ioane_files/HawkesCourseSlides.pdf
+
+https://quant.stackexchange.com/questions/2360/what-exactly-is-meant-by-microstructure-noise explication du microstructure noise!
