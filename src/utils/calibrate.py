@@ -32,10 +32,11 @@ class HawkesCalibrator:
         # for i in range(n):
         #     ll += np.log(mu + alpha*r_array[i])
         ll += np.log(mu + alpha*r_array).sum()
-        
+
         return -ll
     
     def MLE(self, timeit=True, x0=[1,1,1], method='L-BFGS-B'):
+        """Maximum likelihood estimation of the parameters of a univariate Hawkes process."""
         # TODO: find better x0 (e.g. using the method of moments)
         start = time()
         res = minimize(fun=self.nll, x0=x0, bounds=[(1e-3, None), (1e-3, None), (1e-3, None)], method=method)
@@ -43,3 +44,8 @@ class HawkesCalibrator:
         if timeit:
             print("\033[92mCalibration time: ", end - start, "s\033[0m")
         return res.x
+    
+
+    def M_estimation(self):
+        # TODO: implement M-estimation (ie. method of moments)
+        pass
