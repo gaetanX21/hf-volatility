@@ -1,7 +1,7 @@
 Tasks:
 
-- code poisson thinning to simulate inhomogeneous poisson point process
-- use poisson thinning to simulate hawkes process
+- code poisson thinning to simulate inhomogeneous poisson point process OK
+- use poisson thinning to simulate hawkes process OK
 
 - hawkes calibration:
 1) regression using least-squares to fit realized signature plot --> DO THIS IF YOU CARE ABOUT SIGNATURE PLOT
