@@ -120,36 +120,79 @@ To do so, we will use synthetic data generated using the Heston stochastic volat
 Following the Heston model, the asset price $S_t$ will obey the following dynamic
 $$dS_t = S_t\sigma_t dB_t^S$$
 $$d\sigma_t^2 = \kappa(\theta-\sigma_t^2)dt + \sigma \sigma_t\delta dB_t^\sigma$$
-Note that we set $\mu_t=0$ for the sake of simplicity. In addition, the two Brownian motions $B^S$ and $B_\sigma$ should be negatively correlated to account for the so-called \textit{leverage effect}, which states that negative returns tend to increase future volatility. Note that the variance $\sigma_t^2$ follows a CIR process and if the Feller condition $2\kappa \theta > \sigma^2$ are met, then the variance remains positive and cannot reach zero. In this setting, $\theta$ is the long-term variance equilibrium while $\kappa$ is the pullback strength towards that equilibrium. Finally, $\sigma$ is the volatility of the CIR process and as such it can be thought of as the volatility of the volatility, or \textit{vol of vol}.
+Note that we set $\mu_t=0$ for the sake of simplicity. In addition, the two Brownian motions $B^S$ and $B^\sigma$ should be negatively correlated to account for the so-called \textit{leverage effect}, which states that negative returns tend to increase future volatility. Note that the variance $\sigma_t^2$ follows a CIR process and if the Feller condition $2\kappa \theta > \sigma^2$ are met, then the variance remains positive and cannot reach zero. In this setting, $\theta$ is the long-term variance equilibrium while $\kappa$ is the pullback strength towards that equilibrium. Finally, $\sigma$ is the volatility of the CIR process and as such it can be thought of as the volatility of the volatility, or \textit{vol of vol}.
+
+Following \cite{liquidity}, we use parameters $\sigma=0.5$, $\kappa=5$, $\theta=0.1$ and $\rho=-0.3$ for the correlation between $B^S$ and $B^\sigma$. We also set $S=0.001$ the standard deviation of the microstructure noise, such that $\mathbb{E}[\epsilon^2]=S^2$. We also set $\sigma_0^2=\theta=0.1$ as the initial variance.
+
+We use an Euler integration scheme to simulate our stochastic system, and since we want high-frequency data we use a time step $dt=1s$. We also set $T=24h$, such that we have a total of $n=86400$ samples.
+
+In this setting, the naive high-frequency estimator will use a 1-second sampling frequency i.e. the highest possible, while the naive low-frequency estimator will use a 5-minute sampling frequency, i.e. 1 observation kept every 300. The sparse-average estimator and the best estimator will both use $K=300$ bins, such that the resulting per-bin sampling frequency is $86400/300=288s$ i.e. one observation every 2min48s.
+
+The simulation protocol is as follows:
+\begin{enumerate}
+    \item we generate $M$ independent price paths using the Heston model described above
+    \item for each price path $X^{(i)}$, we compute the integrated variance as the discrete integral of the $(\sigma_t^{(i)})^2$, and we compute the four estimates $\hat{IV}_\text{naive}^\text{HF}$, $\hat{IV}_\text{naive}^\text{LF}$, $\hat{IV}_\text{sparse}^\text{avg}$ and $\hat{IV}_\text{best}$
+    \item for each estimator we plot the histogram of the relative error $\frac{\hat{IV}-IV}{IV}$
+\end{enumerate}
+
+The resulting histograms are given in Figure \ref{fig-hists}. As expected, we see that the high-frequency naive estimator behaves extremely poorly, with a relative approximation error consistently above 500. The low-frequency estimator is two orders of magnitude better in terms of performance but is still highly biased, with a relative approximation error consistently greater than 1.5. The sparse-average estimator is only slightly better than the low-frequency naive estimator, with a similar positive bias but lower variance overall. Finally, the best estimator is the only unbiased estimator and also has the lowest variance, making it far better than the preceding estimators. In our Monte Carlo simulation, we find that the relative error $\frac{\hat{IV}_\text{best}-IV}{IV}$ is centered with a standard deviation of about 0.07, meaning that the relative error is below 14\% in 95\% of cases.
+
+Thus, we can conclude that $\hat{IV}_\text{best}$ is a satisfying estimator of integrated volatility which has moderate variance thanks to its low-frequency part and no microstructure-induced bias thanks to its high-frequency part.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/IV_estimators_hist.png}
+    \caption{Histogram of the relative error $\frac{\hat{IV}-IV}{IV}$ for the four estimators proposed using Monte Carlo simulations with $M=1000$.}
+    \label{fig-hists}
+\end{figure}
 
 \subsection{Implementation on tick-by-tick forex data}
+
+LAST THING TO DO FOR ME :)
 
 
 \section{Samson} \label{section-samson}
 \subsection{Modelling the price by a Hawkes process}
 
-Estimating the volatility at high frequencies has proven a difficult endeavor. This is the result of the so-called micro-structure noise that we have until now modelled (as it is often done in litterature) by a latent price and an additive noise. 
-However, although this approach can give interesting results, it doesn't quite reproduce the high frequency effects that we are interested in, which is primarily the observed signature plot. 
+Up until now, we have modelledf the so-called micro-structure noise (as it is often done in litterature) with the introduction of a latent price and an additive noise. 
+However, although this approach can give interesting results, it doesn't quite reproduce the high frequency effects that we are interested in. In this report, we will focus on one specific effect which affects the shape of the signature plot. This signature plot is simply the plot of the realized volatility against the sampling frequency.
 
 Add an image of the signature plot.
 
-Moreover, this additive noise model doesn't really gives insight into the nature of this noise and its micro-structure properties. 
+One the the problems of the additive noise model is that it doesn't really give insight into the nature of this noise and its micro-structure properties and the introduction of a noise at high frequency may seem a bit artificial.
 
 To remediate those issues, we introduce a new dynamic which explains price movements using mutually exciting Hawkes processes.
 
-Let $X(t)$ be the price of our asset, $N_1(t)$ and $N_2(t)$ two point processes that represents the sum of positive and negative price jumps up until the time $t$. Then we have : $X(t) = N_1(t) - N_2(t)$. 
+Let $X(t)$ be the price of our asset, $N_1(t)$ and $N_2(t)$ two point processes that represents the sum of positive and negative price jumps up until the time $t$. Then we have : \begin{equation} X(t) = N_1(t) - N_2(t) \end{equation}. 
 
 The idea is that $N_1(t)$ and $N_2(t)$ are mutually exciting at short time scales. This means that at high frequency, when the price goes up a little bit, it tends to go down right after and thus we model our mean reverting property. At longer time scales, the model should behave as a brownian motion to match the Black-Scholes model. This is indeed the case if $N_1(t)$ and $N_2(t)$ are independent Poisson processes with intensity $\mu$ for instance.
-Indeed, in this case the characteristic function of $N_1(t) - N_2(t)$ is given by $\exp(-2\mu + \mu(\exp(it) + \exp(-it)) = \exp(2\mu(cos(t) - 1)$. Therefore $\lim_{t \to \infty} \frac{1}{\sqrt{T}}X(tT) = \sqrt{2\mu}B(t)$ where $B(t)$ is a Brownian motion.
-This approach can thus give a unified view of the asset's behaviour while reproducing (as we will show later) the effects we observe at high and low frequencies.
+Indeed, in this case 
 
-These mutually exciting processes can be naturally modelled by Hawkes processes. Let $\lambda_1$ and $\lambda_2$ be the intensities of $N_1$ and $N_2$. 
+% Add explanations
+the characteristic function of $N_1(t) - N_2(t)$ is given by $\exp(-2\mu + \mu(\exp(it) + \exp(-it)) = \exp(2\mu(cos(t) - 1)$. Therefore 
 
-The mean reverting property we aim for suggest to set the self-exciting kernels to 0 and simply keep the base excitations as well as the cross exciting kernels. Therefore, we have $\lambda_i = \mu_i + \int_{-\infty}^{t} \phi_ij(t-u)dN_j(u)$ for $i \in {1, 2}$.
+\begin{equation}
+\lim_{t \to \infty} \frac{1}{\sqrt{T}}X(tT) = \sqrt{2\mu}B(t)
+\end{equation}
+
+where $B(t)$ is a Brownian motion.
+
+This approach can thus give a unified view of the asset's price behaviour while reproducing (as we will show later) the effects we observe at both high and low frequencies.
+
+These mutually exciting processes can be naturally modelled by Hawkes processes in order to introduce those time scale differences (which will be modelled by the shape of the kernels). Let $\lambda_1$ and $\lambda_2$ be the intensities of $N_1$ and $N_2$. 
+
+The mean reverting property we aim for suggest to set the self-exciting kernels to 0 and simply keep the base excitations as well as the cross exciting kernels. Therefore, we have 
+
+\begin{equation} \lambda_i = \mu_i + \int_{-\infty}^{t} \phi_{ij}(t-u)dN_j(u), i \in {1, 2}.
+\end{equation}
 
 As the situation appears to be symmetric if the price goes down or up (it may not be completely true but we make this approximation), we take $\phi_1 = \phi_2 = \phi$. As it is done in (insert article), we use exponential kernel for simplicity and because this can easily relate to the time scale we are considering. Therefore, we have $\phi(t) = \beta \cdot \exp(-\alpha t)$ where $\alpha, \beta \in \mathbb{{R^{+}}^*}$.
 
+To make sure this approach is sensible, we can compare the plots of real tick data versus data generated by our model. 
 
+Insérer les deux plots
+
+We see that they look similar. Although
 
 \subsection{Explaining the signature plot}
 
@@ -164,6 +207,7 @@ As the situation appears to be symmetric if the price goes down or up (it may no
     \bibitem{signature_plot}{Hansen, P. et al. \textit{Realized Variance and Market Microstructure Noise} (2004).}
     \bibitem{epps}{Epps, T. W. \textit{Comovements in stock prices in the very short run} (1979).}
     \bibitem{heston}{Heston, S. \textit{A closed-form solutions for options with stochastic volatility} (1993).}
+    \bibitem{liquidity}{Aït Sahalia Y. \textit{High frequency market microstructure noise estimates and liquidity measures} (2009).}
     
     
 \end{thebibliography}	
