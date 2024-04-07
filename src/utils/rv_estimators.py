@@ -49,8 +49,7 @@ def rv_best(ts: pd.Series, tau: pd.Timedelta, K: int, verbose: bool=True):
     rv_naive_est = rv_naive(ts, tau, verbose=False)
     rv_multi_est = rv_multigrid(ts, tau, K, verbose=False)
 
-    # n_bar = (n_new-K+1)/K
-    n_bar = (n_new-K+1)/K
+    n_bar = (n_new-K+1)/K # why not n_bar=n/K?
     rv_best_est = rv_multi_est - (n_bar/n_new)*rv_naive_est
     return rv_best_est
      
