@@ -115,6 +115,12 @@ $$\hat{IV}_\text{best} \approx^{\mathcal{L}} IV + n^{-1/6}\big[ \frac{8}{c^2}S^4
 Although this estimator converges at rate $n^{-1/6}$ only, it is unbiased and allows for sampling at arbitrarily high frequencies. In addition, $c$ can be optimized for MSE, yielding $$c^*=\big( \frac{T}{12S^4}\int_0^T \sigma_t^4 dt \big)^{1/3}$$
 
 \subsection{Assessing estimator performance on synthetic data}
+We will now compare the performance of our four estimators, from worse to best: $\hat{IV}_\text{naive}$, $\hat{IV}_\text{sparse}$, $\hat{IV}_\text{sparse}^\text{avg}$ and $\hat{IV}_\text{best}$.
+To do so, we will use synthetic data generated using the Heston stochastic volatility model \cite{heston}. This way, we will know the true value of the integrated variance $IV=\int_0^T \sigma_t^2 dt$ and we will be able to compare it to the estimated value $\hat{IV}$ for each estimator.
+Following the Heston model, the asset price $S_t$ will obey the following dynamic
+$$dS_t = S_t\sigma_t dB_t^S$$
+$$d\sigma_t^2 = \kappa(\theta-\sigma_t^2)dt + \sigma \sigma_t\delta dB_t^\sigma$$
+Note that we set $\mu_t=0$ for the sake of simplicity. In addition, the two Brownian motions $B^S$ and $B_\sigma$ should be negatively correlated to account for the so-called \textit{leverage effect}, which states that negative returns tend to increase future volatility. Note that the variance $\sigma_t^2$ follows a CIR process and if the Feller condition $2\kappa \theta > \sigma^2$ are met, then the variance remains positive and cannot reach zero. In this setting, $\theta$ is the long-term variance equilibrium while $\kappa$ is the pullback strength towards that equilibrium. Finally, $\sigma$ is the volatility of the CIR process and as such it can be thought of as the volatility of the volatility, or \textit{vol of vol}.
 
 \subsection{Implementation on tick-by-tick forex data}
 
@@ -157,6 +163,7 @@ As the situation appears to be symmetric if the price goes down or up (it may no
     \bibitem{princeton}{Zhang, L. et al. \textit{A Tale of Two Time Scales: Determining Integrated Volatility With Noisy High-Frequency Data} (2018).}
     \bibitem{signature_plot}{Hansen, P. et al. \textit{Realized Variance and Market Microstructure Noise} (2004).}
     \bibitem{epps}{Epps, T. W. \textit{Comovements in stock prices in the very short run} (1979).}
+    \bibitem{heston}{Heston, S. \textit{A closed-form solutions for options with stochastic volatility} (1993).}
     
     
 \end{thebibliography}	

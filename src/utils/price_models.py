@@ -48,12 +48,12 @@ class Heston:
     """
     def __init__(self, mu: float, sigma: float, theta: float, rho: float, kappa: float, nu0: float):
         assert 2*kappa*theta > sigma**2, 'Feller condition not satisfied.'
-        self.mu = mu
-        self.kappa = kappa
-        self.theta = theta
-        self.sigma = sigma
-        self.rho = rho
-        self.nu0 = nu0
+        self.mu = mu # drift
+        self.kappa = kappa # mean reversion speed
+        self.theta = theta # long-term mean
+        self.sigma = sigma # volatility of volatility
+        self.rho = rho # correlation between stock and volatility
+        self.nu0 = nu0 # initial variance
 
     def simulate(self, T: float, dt: float, S0: float=100) -> tuple[np.ndarray, np.ndarray]:
         """Simulate a price path using Heston model."""
@@ -77,6 +77,29 @@ class Heston:
         S = pd.Series(S, index=index)
         nu = pd.Series(nu, index=index)
         return S, nu
+    
+    def simulate_M(self, M: int, T: float, dt: float, S0: float=100) -> tuple[np.ndarray, np.ndarray]:
+        """Simulate M price paths using Heston model."""
+        N = int(T/dt)
+        Z = np.random.normal(size=(M,N))
+        W1 = np.random.normal(size=(M,N))
+        W2 = np.sqrt(1-self.rho**2)*Z + self.rho*W1
+        nu = np.zeros((M,N))
+        nu[:,0] = self.nu0
+        S = np.zeros((M,N))
+        S[:,0] = S0
+        for i in range(1, N):
+            nu[:,i] = nu[:,i-1] + self.kappa*(self.theta - nu[:,i-1])*dt + self.sigma*np.sqrt(nu[:,i-1]*dt)*W1[:,i]
+            S[:,i] = S[:,i-1]*np.exp((self.mu - 0.5*nu[:,i])*dt + np.sqrt(nu[:,i]*dt)*W2[:,i])
+        # turn S and nu into time series
+        timestep = pd.Timedelta(dt*365, 'D')
+        assert timestep >= pd.Timedelta(1, 's'), 'Timestep too small (<1s).'
+        index = pd.date_range(start=pd.Timestamp('2024-01-01'), periods=N, freq=timestep)
+        # round index to nearest second (to avoid numerical rounding errors in pandas)
+        index = index.round('S')
+        all_S = [pd.Series(S[i], index=index) for i in range(M)]
+        all_nu = [pd.Series(nu[i], index=index) for i in range(M)]
+        return all_S, all_nu
     
     def plot(self, S: np.ndarray, nu: np.ndarray) -> None:
         fig, axs = plt.subplots(2)
