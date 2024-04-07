@@ -147,6 +147,12 @@ Thus, we can conclude that $\hat{IV}_\text{best}$ is a satisfying estimator of i
 \end{figure}
 
 \subsection{Implementation on tick-by-tick forex data}
+In this last subsection, we will look at high-frequency, tick-by-tick forex data for the EUR/USD pair obtained from TrueFX. We will first measure integrated variance using the naive estimator $\hat{IV}_\text{naive}$ at various frequencies to check that our estimations do indeed diverge as the sampling frequency goes to infinity. We will then measure integrated variance using the best estimator $\hat{IV}_\text{best}$ and compare the results.
+
+1. Describe the data
+2. Plot the finding
+a. diverging signature plot
+b. integrated volatility measured using best estimator. Comments?
 
 LAST THING TO DO FOR ME :)
 
@@ -192,9 +198,11 @@ To make sure this approach is sensible, we can compare the plots of real tick da
 
 Insérer les deux plots
 
-We see that they look similar. Although
+We see that they look similar. Although this is no proof, it is reassuring that our model gives similar outputs if we want to fit it to real data later.
 
 \subsection{Explaining the signature plot}
+
+
 
 \subsection{Fitting the model on real data}
 
