@@ -28,6 +28,7 @@
 \newtheorem{example}{Example}
 \newtheorem{theorem}{Theorem}
 \usepackage{subcaption} 
+\usepackage{nicefrac}
 
 \def\dsqcup{\sqcup\mathchoice{\mkern-7mu}{\mkern-7mu}{\mkern-3.2mu}{\mkern-3.8mu}\sqcup}
 
@@ -60,7 +61,7 @@
 
 % abstract
  \begin{abstract}
-    In this paper, we will discuss, reproduce and try to extend the work of Futter, Horvath and Wiese on Signature Trading \cite{main_article}. In Section \ref{section-signature}, we will give a broad overview of the Signature object. In Section \ref{section-sigtrading}, we will show how one can use to the Signature to build quantitative trading strategies. In particular, we will implement the Sig Trader proposed in \cite{main_article} and analyze its performance in various scenarios.
+    In this paper we will tackle the issue of volatility estimation when dealing with high-frequency financial data. We will use EUR/USD tick-by-tick forex data to test our models. We will first discuss ARCH and GARCH modeling of forex time series. Then we will look into non-naive high-frequency integrated variance estimators. Finally we will show how point processes can be used to model high-frequency price dynamics.
 \end{abstract}
 
 
@@ -137,7 +138,7 @@ The simulation protocol is as follows:
 
 The resulting histograms are given in Figure \ref{fig-hists}. As expected, we see that the high-frequency naive estimator behaves extremely poorly, with a relative approximation error consistently above 500. The low-frequency estimator is two orders of magnitude better in terms of performance but is still highly biased, with a relative approximation error consistently greater than 1.5. The sparse-average estimator is only slightly better than the low-frequency naive estimator, with a similar positive bias but lower variance overall. Finally, the best estimator is the only unbiased estimator and also has the lowest variance, making it far better than the preceding estimators. In our Monte Carlo simulation, we find that the relative error $\frac{\hat{IV}_\text{best}-IV}{IV}$ is centered with a standard deviation of about 0.07, meaning that the relative error is below 14\% in 95\% of cases.
 
-Thus, we can conclude that $\hat{IV}_\text{best}$ is a satisfying estimator of integrated volatility which has moderate variance thanks to its low-frequency part and no microstructure-induced bias thanks to its high-frequency part.
+Thus, we can conclude that $\hat{IV}_\text{best}$ is a satisfying estimator of integrated variance which has moderate variance thanks to its low-frequency part and no microstructure-induced bias thanks to its high-frequency part.
 
 \begin{figure}[h]
     \centering
@@ -149,18 +150,30 @@ Thus, we can conclude that $\hat{IV}_\text{best}$ is a satisfying estimator of i
 \subsection{Implementation on tick-by-tick forex data}
 In this last subsection, we will look at high-frequency, tick-by-tick forex data for the EUR/USD pair obtained from TrueFX. We will first measure integrated variance using the naive estimator $\hat{IV}_\text{naive}$ at various frequencies to check that our estimations do indeed diverge as the sampling frequency goes to infinity. We will then measure integrated variance using the best estimator $\hat{IV}_\text{best}$ and compare the results.
 
-1. Describe the data
-2. Plot the finding
-a. diverging signature plot
-b. integrated volatility measured using best estimator. Comments?
+To avoid the abnormal spread occurring on forex between 22:00 and 22:30 (because of large banks performing their daily IT maintenance during this time slot), we will look at just 23 hours of non-stop EUR/USD data collected from 02/04/2024 18:00 EST to 02/05/2024 17:00 EST. Our dataset is tick-by-tick data containing only the best bid and best ask at a given time. We have a total of 681,912 ticks, representing an average of 8.24 ticks/s. We could define $S_t$ to be the logarithm of the mid price $\text{mid}=\frac{\text{ask}+\text{bid}}{2}$ but in practice this leads to an artificial reduction of volatility (since we're averaging). Thus, we will take the logarithm of the best bid for $S_t$. Using the best ask yields identical results.
 
-LAST THING TO DO FOR ME :)
+Our experiment protocol is the following:
+\begin{enumerate}
+    \item we define a range of sampling frequencies from $\tau=100ms$ to $\tau=20s$ using $100ms$ intervals
+    \item for each of $\tau$, we resample $S_t$ to this frequency. [note that when a resampling bin has several ticks we take the first (i.e. earliest) one, and when a resampling bin has no ticks we use forward fill (i.e. the fill the value with the latest value available)]
+    \item we estimate integrated variance over our whole dataset using the naive estimator and the best estimator, both sampling at frequency $\tau$ [note that for the sake of completeness we use $K=10,100,1000$ for the best estimator]
+    \item we plot $\big(\tau,\hat{IV}(\tau)\big)$ for each estimator
+\end{enumerate}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/output_iv_forex.png}
+    \caption{Integrated variance estimated using naive estimator and best estimator at various frequencies.}
+    \label{fig-IV-forex}
+\end{figure}
+
+The results are illustrated in Figure \ref{fig-IV-forex}. As expected, the naive estimator diverges at high sampling frequencies, as early as $\tau\sim10s$. On the contrary, the best estimator remains stable at higher frequencies for all values of $K$, though for $K=10$ we see a small bias at the highest sampling frequency ($\tau=100ms$). Interestingly, the best estimators for $K=100$ behave slightly differently, with the $\hat{IV}_\text{best}^{K=100}$ monotonously increasing as $\tau$ decreases, whereas $\hat{IV}_\text{best}^{K=1000}$ remains very stable up to $\tau\sim10s$ then decreases and reaches a minimum at around $\tau\sim2s$ and then increases again. In this case we obviously do not know the integrated variance so we cannot be sure which of these two estimators is more accurate.
 
 
 \section{Samson} \label{section-samson}
-\subsection{Modelling the price by a Hawkes process}
+\subsection{Modeling the price by a Hawkes process}
 
-Up until now, we have modelledf the so-called micro-structure noise (as it is often done in litterature) with the introduction of a latent price and an additive noise. 
+Up until now, we have modeled the so-called micro-structure noise (as it is often done in litterature) with the introduction of a latent price and an additive noise. 
 However, although this approach can give interesting results, it doesn't quite reproduce the high frequency effects that we are interested in. In this report, we will focus on one specific effect which affects the shape of the signature plot. This signature plot is simply the plot of the realized volatility against the sampling frequency.
 
 Add an image of the signature plot.
@@ -185,7 +198,7 @@ where $B(t)$ is a Brownian motion.
 
 This approach can thus give a unified view of the asset's price behaviour while reproducing (as we will show later) the effects we observe at both high and low frequencies.
 
-These mutually exciting processes can be naturally modelled by Hawkes processes in order to introduce those time scale differences (which will be modelled by the shape of the kernels). Let $\lambda_1$ and $\lambda_2$ be the intensities of $N_1$ and $N_2$. 
+These mutually exciting processes can be naturally modelled by Hawkes processes in order to introduce those time scale differences (which will be modeled by the shape of the kernels). Let $\lambda_1$ and $\lambda_2$ be the intensities of $N_1$ and $N_2$. 
 
 The mean reverting property we aim for suggest to set the self-exciting kernels to 0 and simply keep the base excitations as well as the cross exciting kernels. Therefore, we have 
 
@@ -202,7 +215,11 @@ We see that they look similar. Although this is no proof, it is reassuring that 
 
 \subsection{Explaining the signature plot}
 
+We introduce an estimator of the volatility at the frequency $\frac{1}{\tau}$  
 
+\begin{equation}
+    \hat{C}(\tau) = \frac{1}{T}\sum_{n=0}^{\nicefrac{T}{\tau}}(X((n+1)\tau) - X(n\tau))^2
+\end{equation}
 
 \subsection{Fitting the model on real data}
 
