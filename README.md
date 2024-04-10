@@ -7,6 +7,7 @@ This repository contains code and documentation related to modeling asset price 
 The project consists of two main parts:
 
 1. **Estimating Volatility at Short Timescales**:
+
    - Implementation of various volatility estimators, including naive high-frequency estimators, improved low-frequency estimators, and a combined approach.
    - Assessment of estimator performance using synthetic data generated from the Heston stochastic volatility model.
    - Application of estimators to tick-by-tick forex data to analyze volatility estimation at various sampling frequencies.
@@ -19,7 +20,7 @@ The project consists of two main parts:
 ## Directory Structure
 
 - `utils/`: Contains Python scripts implementing different volatility estimators.
-- `notebooks/`: Includes Jupyter notebooks or scripts for modeling asset prices with Hawkes processes.
+- `plots/`: Includes plots present in the paper.
 
 ## Dependencies
 
