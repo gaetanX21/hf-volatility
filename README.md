@@ -18,30 +18,11 @@ The project consists of two main parts:
 
 ## Directory Structure
 
-- `estimators/`: Contains Python scripts implementing different volatility estimators.
-- `models/`: Includes Jupyter notebooks or scripts for modeling asset prices with Hawkes processes.
-- `data/`: Sample datasets used for estimation and modeling purposes.
-- `docs/`: Documentation files, including theoretical explanations and results.
-- `tests/`: Unit tests for verifying the correctness of implemented estimators and models.
+- `utils/`: Contains Python scripts implementing different volatility estimators.
+- `notebooks/`: Includes Jupyter notebooks or scripts for modeling asset prices with Hawkes processes.
 
 ## Dependencies
 
 - Python (>=3.6)
 - NumPy, pandas, matplotlib, seaborn
 - Jupyter Notebook (for running model analysis notebooks)
-- pytest (for running tests)
-
-## Usage
-
-To run the volatility estimators or model analysis scripts, follow these steps:
-
-1. Clone this repository to your local machine.
-2. Navigate to the relevant directory (`estimators/` or `models/`).
-3. Open and run the Python scripts or Jupyter notebooks using an appropriate Python environment.
-
-For example:
-
-```bash
-git clone https://github.com/your-username/price-process-hawkes.git
-cd price-process-hawkes/models
-jupyter notebook Price_Model_Analysis.ipynb
