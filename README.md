@@ -20,7 +20,6 @@ The project consists of two main parts:
 
 - `utils/`: Contains Python scripts implementing different volatility estimators.
 - `notebooks/`: Includes Jupyter notebooks or scripts for modeling asset prices with Hawkes processes.
-- `tests/`: Unit tests for verifying the correctness of implemented estimators and models.
 
 ## Dependencies
 
